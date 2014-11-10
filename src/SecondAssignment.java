@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -19,7 +20,9 @@ public class SecondAssignment {
     public static void main(String[] args) throws IOException {
         final String splitCharacter = " ";
         final String pathname = "F:\\Google Drive\\Documents\\Westerdals\\3. Semester\\PG4200\\Assignment2\\resources\\stortinget2014.txt";
-//        ArrayList<ParliamentMember> parliamentMembers = getParliamentMembers(splitCharacter, pathname);
+        ArrayList<ParliamentMember> parliamentMembers = getParliamentMembers(splitCharacter, pathname);
+        parliamentMembers.forEach(System.out::println);
+        System.out.println();
 
         final String hostUrl = "http://www.klassekampen.no/";
         try (Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(new URL(hostUrl).openConnection().getInputStream(), "UTF-8")))) {
@@ -28,30 +31,16 @@ public class SecondAssignment {
                 stringBuilder.append(scanner.nextLine());
             }
 
-            ArrayList<String> pageLinks = new ArrayList<>();
-            ArrayList<String> pageDescriptions = new ArrayList<>();
-
+            final HashMap<String, String> linkDescriptionMap = new HashMap<>();
             Matcher pageMatcher = Pattern.compile("<a[^>]+href=[\"']?([^\"'>]+)[\"']?[^>]*>(.+?)</a>",
                     Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(stringBuilder);
             while (pageMatcher.find()) {
-                pageLinks.add(pageMatcher.group(1));
-                pageDescriptions.add(pageMatcher.group(2));
+                linkDescriptionMap.put(pageMatcher.group(1), pageMatcher.group(2));
             }
 
-            final int[] i = {0};
-            pageLinks.forEach(val -> System.out.println(val + " - " + pageDescriptions.get(i[0]++)));
+            linkDescriptionMap.forEach((k, v) -> System.out.println(k + " - " + v));
         }
     }
-
-
-            /*
-                line = scanner.nextLine();
-                indexOf = line.indexOf("\"http://"); // THIS SCANS FOR EXTERNAL URLS, OPPOSITE OF WHAT WE WANT
-                if (indexOf != -1) {
-                    pageURLs.add(line.substring(++indexOf, line.indexOf("\"", indexOf)));
-                    // TODO document that this does not account for the JS-generated links, which we anyway don't want. :)
-            }
-              */
 
     private static ArrayList<ParliamentMember> getParliamentMembers(final String splitCharacter, final String pathname) throws IOException {
         ArrayList<ParliamentMember> parliamentMembers = new ArrayList<>();
