@@ -62,11 +62,11 @@ public class FirstAssignment {
                 "Enter desired sorting criteria (1-4): ");
         int sortingMethod = getUserRequestedSortingMethod(scanner);
 
+        System.out.println("Scanning directory, please standby..\n");
         File[] filesToSort = recursiveSearch(searchTargetDirectory, needle);
         sortByMethod(sortingMethod, filesToSort);
+
         System.out.println("Files:");
-
-
         Arrays.asList(filesToSort).forEach(file -> System.out.println("\t" + file.getName()));
     }
 
