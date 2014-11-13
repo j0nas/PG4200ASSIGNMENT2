@@ -10,18 +10,19 @@ public class FirstAssignment {
         getUserParameters();
     }
 
-    public static File[] recursiveSearch(File folder, String needle) throws IOException {
-        if (!folder.isDirectory() || !folder.canRead()) {
-            throw new IOException("Provided file '" + folder.getAbsolutePath() + "' is not a directory/cannot be accessed!");
+    public static File[] recursiveSearch(File folder, String needle) throws Exception {
+        if (folder == null || !folder.exists() || !folder.isDirectory() || !folder.canRead()) {
+            throw new IOException("Provided file is not a directory/cannot be accessed!");
         }
 
         ArrayList<File> results = new ArrayList<>();
         ArrayList<File> foldersToSearch = new ArrayList<>();
 
         for (File file : folder.listFiles()) {
-            if (file.isDirectory()) {
+            if (file.isDirectory() && file.listFiles() != null) {
+                // Add to queue of folders to check out if the folder isn't empty
                 foldersToSearch.add(file);
-            } else if (containsString(file, needle)) {
+            } else if (file.canRead() && containsString(file, needle)) {
                 results.add(file);
             }
         }
