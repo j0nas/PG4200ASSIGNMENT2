@@ -49,15 +49,19 @@ public class SecondAssignment {
                 System.out.print("Name of parliament member: ");
                 final String requestedParliamentMember = scanner.nextLine();
                 System.out.printf("%n%nEntries about %s:%n%n", requestedParliamentMember);
+            } else {
+                System.out.println("No mentions of the parsed parliament members were found!");
             }
         } while (!queryUserWishesToExit(scanner));
     }
 
+    private static void printMentionsOfParliamentMember(final String memberName, ArrayList<String> memberMentions) {
+        System.out.printf("Entries about %s:%n%n", memberName);
+        memberMentions.forEach(System.out::println);
+    }
+
     private static void printAllFoundMentions(final HashMap<String, ArrayList<String>> parliamentMembersMentions) {
-        parliamentMembersMentions.forEach((parliamentMember, memberMentions) -> {
-            System.out.println(parliamentMember + ": ");
-            memberMentions.forEach(System.out::println);
-        });
+        parliamentMembersMentions.forEach(SecondAssignment::printMentionsOfParliamentMember);
     }
 
     private static void queueWebSearch(final String hostUrl, final HashMap<String,
