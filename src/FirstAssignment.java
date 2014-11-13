@@ -35,10 +35,12 @@ public class FirstAssignment {
     }
 
     private static boolean containsString(final File file, final String needle) throws IOException {
+        final String lowerCase = needle.toLowerCase();
         try (Stream<String> lines = Files.lines(file.toPath())) {
-            return lines.anyMatch(line -> line.toLowerCase().contains(needle));
+            return lines.anyMatch(line -> line.toLowerCase().contains(lowerCase));
         } catch (Exception e) {
-            System.out.printf("Could not read file: '%s' - error: %s %n", file.getAbsolutePath(), e.getLocalizedMessage());
+            // TODO add option for /q or /debug performance
+            //System.out.printf("Could not read file: '%s' - error: %s %n", file.getAbsolutePath(), e.getLocalizedMessage());
             return false;
         }
     }
@@ -46,7 +48,7 @@ public class FirstAssignment {
     private static void getUserParameters() throws Exception {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.print("String to search for: ");
+        System.out.print("String to search for (casing will be ignored): ");
         String needle = scanner.nextLine();
 
         System.out.print("File path to search: ");
