@@ -1,13 +1,11 @@
 import edu.princeton.cs.algs4.Queue;
+import edu.princeton.cs.introcs.In;
 
-import java.io.*;
-import java.net.URL;
-import java.net.UnknownHostException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -17,7 +15,7 @@ public class SecondAssignment {
         list.add(new ParliamentMember(values[0], values[1], values[2], values[3]));
     }
 
-    public static void stashAllFoundParliamentMembers(String html, String url, HashMap<String, ArrayList<String>> parliamentMembersMentions) {
+    public static void stashAllFoundMembers(String html, String url, HashMap<String, ArrayList<String>> parliamentMembersMentions) {
         final String finalHtml = html.toLowerCase();
         parliamentMembersMentions.entrySet().parallelStream()
                 .filter(memberMap -> finalHtml.contains(memberMap.getKey()))
@@ -27,32 +25,60 @@ public class SecondAssignment {
     public static void main(String[] args) throws IOException {
         final String splitCharacter = " ";
         final String pathname = "resources/stortinget2014.txt";
-        final String hostUrl = "http://www.klassekampen.no"; // NO SLASHES AT END OF URL!
+        final String hostUrl = "klassekampen.no"; // HTTP(S) PREFIX IS APPENDED. NO SLASH AT END OF URL!
+        final String hostUrlScheme = "http://"; // EDIT THIS TO MATCH URL SCHEME. (HTTP/HTTPS)
+
         final int pageAmountToTraverse = 100;
         final boolean debug = false;
 
-        System.out.printf("Indexing mentions of parliament representatives%nat %s%nPlease standby..%n", hostUrl);
+        // Gets the link that the href parameter has as a value.
+        final Pattern pageMatcherPattern =
+                Pattern.compile("<a[^>]+href=[\"']?([^\"'>]+)[\"']?[^>]*>.+?</a>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-        ArrayList<ParliamentMember> parsedParliamentMembers = getParliamentMembers(splitCharacter, pathname);
-        HashMap<String, ArrayList<String>> parliamentMembersMentions = new HashMap<>();
-        parsedParliamentMembers.forEach(parliamentMember -> parliamentMembersMentions.put(parliamentMember.fullNameLower, new ArrayList<>()));
+        System.out.printf("Indexing mentions of parliament representatives at %s%nPlease standby..%n", hostUrl);
+        ArrayList<ParliamentMember> parsedMembers = getParliamentMembers(splitCharacter, pathname);
+        HashMap<String, ArrayList<String>> membersMentions = new HashMap<>();
+        parsedMembers.forEach(parliamentMember -> membersMentions.put(parliamentMember.fullNameLower, new ArrayList<>()));
 
-        queueWebSearch(hostUrl, parliamentMembersMentions, pageAmountToTraverse);
+        queueWebSearch(hostUrlScheme, hostUrl, pageAmountToTraverse, membersMentions, pageMatcherPattern);
+
+
+        final HashMap<String, Integer> partyVotes = new HashMap<>();
+        final Set<String> parties = assignment3_getDistinctParties(parsedMembers);
+
+        membersMentions.entrySet().parallelStream()
+                .filter(k -> k.getValue().size() > 0) // Filter to only mentioned parliament members
+                .forEach(mentionedMembers -> parsedMembers.stream()
+                        .filter(member -> member.fullNameLower.equals(mentionedMembers.getKey())) // Filter to only correct member ..
+                        .forEach(memberObject -> partyVotes.put(memberObject.party, partyVotes.get(memberObject.party) == null ? 1 : partyVotes.get(memberObject.party) + 1))); // and get the party s/he belongs to
+
+        partyVotes.forEach((party, voteCount) -> System.out.printf("%s: %d%n", party, voteCount));
 
         if (debug) {
-            printAllFoundMentions(parliamentMembersMentions);
+            printAllFoundMentions(membersMentions);
+        } else {
+            final Scanner scanner = new Scanner(System.in);
+            do {
+                if (!membersMentions.isEmpty()) {
+                    System.out.print("Name of parliament member: ");
+                    final String requestedMember = scanner.nextLine().toLowerCase().trim();
+                    if (membersMentions.containsKey(requestedMember)) {
+                        printMentionsOfParliamentMember(requestedMember, membersMentions.get(requestedMember));
+                    } else {
+                        System.out.println("Requested parliament member was not found. Please check input.");
+                    }
+                } else {
+                    System.out.println("No mentions of the parsed parliament members were found!");
+                }
+            } while (!queryUserWishesToExit(scanner));
         }
+    }
 
-        final Scanner scanner = new Scanner(System.in);
-        do {
-            if (!parliamentMembersMentions.isEmpty()) {
-                System.out.print("Name of parliament member: ");
-                final String requestedParliamentMember = scanner.nextLine();
-                System.out.printf("%n%nEntries about %s:%n%n", requestedParliamentMember);
-            } else {
-                System.out.println("No mentions of the parsed parliament members were found!");
-            }
-        } while (!queryUserWishesToExit(scanner));
+    private static Set<String> assignment3_getDistinctParties(List<ParliamentMember> members) {
+        // ASSIGNMENT 3
+        final Set<String> parties = new TreeSet<>();
+        members.forEach(member -> parties.add(member.party));
+        return parties;
     }
 
     private static void printMentionsOfParliamentMember(final String memberName, ArrayList<String> memberMentions) {
@@ -61,55 +87,60 @@ public class SecondAssignment {
     }
 
     private static void printAllFoundMentions(final HashMap<String, ArrayList<String>> parliamentMembersMentions) {
-        parliamentMembersMentions.forEach(SecondAssignment::printMentionsOfParliamentMember);
+        parliamentMembersMentions.forEach((memberName, memberMentions) -> {
+            if (memberMentions.size() > 0) {
+                printMentionsOfParliamentMember(memberName, memberMentions);
+            }
+        });
     }
 
-    private static void queueWebSearch(final String hostUrl, final HashMap<String,
-            ArrayList<String>> parliamentMembersMentions, int traversingLimit) throws IOException {
+    private static void queueWebSearch(final String hostUrlScheme, final String hostUrl, int traversingLimit,
+                                       final HashMap<String, ArrayList<String>> parliamentMembersMentions, final Pattern pageMatcherPattern) throws IOException {
         final Queue<String> foundURLs = new Queue<>();
-        foundURLs.enqueue(hostUrl);
-        StringBuilder stringBuilder;
         int pagesTraversed = 0;
         final ArrayList<String> visitedUrls = new ArrayList<>();
 
+        foundURLs.enqueue(hostUrlScheme + hostUrl);
+        Matcher pageMatcher;
+        In urlParser = null;
+        String html;
+        String queuedUrl;
+
         while (!foundURLs.isEmpty() && (pagesTraversed++ < traversingLimit)) {
-            final String url = foundURLs.dequeue();
+            try {
+                queuedUrl = foundURLs.dequeue();
+                urlParser = new In(queuedUrl);
+                html = urlParser.readAll();
 
-            try (Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(new URL(url).openConnection().getInputStream(), "UTF-8")))) {
-                stringBuilder = new StringBuilder();
-                while (scanner.hasNextLine()) {
-                    stringBuilder.append(scanner.nextLine());
-                }
+                stashAllFoundMembers(html, queuedUrl, parliamentMembersMentions);
 
-                stashAllFoundParliamentMembers(stringBuilder.toString(), url, parliamentMembersMentions);
-
-                // Group(1) = link, Group(2) = text that the anchor tag wraps around
-                Matcher pageMatcher = Pattern.compile("<a[^>]+href=[\"']?([^\"'>]+)[\"']?[^>]*>(.+?)</a>",
-                        Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(stringBuilder.toString());
-
+                pageMatcher = pageMatcherPattern.matcher(html);
                 while (pageMatcher.find()) {
-                    if (pageMatcher.group(1).toLowerCase().startsWith("mailto")) {
-                        continue;
-                    }
-
-                    final boolean isHostSiteUrl = !pageMatcher.group(1).startsWith("http://");
-                    if (isHostSiteUrl || pageMatcher.group(1).startsWith(hostUrl)) {
-                        final String parsedUrl = (isHostSiteUrl ? hostUrl : "") + pageMatcher.group(1);
-                        if (!visitedUrls.contains(parsedUrl)) {
-                            visitedUrls.add(parsedUrl);
-                            foundURLs.enqueue(parsedUrl);
-                        }
+                    String parsedUrl = fixRelativeUrl(pageMatcher.group(1).toLowerCase(), hostUrlScheme + hostUrl);
+                    if (urlIsOnHostSite(parsedUrl, hostUrl) && !visitedUrls.contains(parsedUrl)) {
+                        visitedUrls.add(parsedUrl);
+                        foundURLs.enqueue(parsedUrl);
                     }
                 }
-
-            } catch (UnknownHostException e) {
-                System.out.println("Unknown host exception - " + e.getMessage());
-            } catch (IllegalArgumentException e) {
-                System.out.println("Illegal argument exception - " + e.getMessage());
-            } catch (FileNotFoundException e) {
-                System.out.println("File not found exception - " + e.getMessage());
+            } catch (NullPointerException ignored) {
+            } finally {
+                try {
+                    if (urlParser != null && urlParser.exists()) {
+                        urlParser.close();
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
+    }
+
+    private static boolean urlIsOnHostSite(final String parsedUrl, final String hostUrl) {
+        return parsedUrl.startsWith("http") && parsedUrl.contains(hostUrl);
+    }
+
+    private static String fixRelativeUrl(String url, String completeHostUrl) {
+        String parsedUrl = !url.startsWith("http") ? completeHostUrl + (url.charAt(0) != '/' ? "/" : "") : "";
+        return parsedUrl + url;
     }
 
     private static boolean queryUserWishesToExit(final Scanner scanner) {
