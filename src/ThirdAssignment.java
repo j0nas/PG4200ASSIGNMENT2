@@ -4,8 +4,9 @@ public class ThirdAssignment {
     /**
      * Convenience method which outputs all parties and the number of times their respective
      * members have been mentioned, sorted by amount of mentions.
+     *
      * @param membersMentions Map of all mentioned members and the URLs containing their mentions.
-     * @param parsedMembers List of List of ParliamentMember objects.
+     * @param parsedMembers   List of List of ParliamentMember objects.
      */
     public static void printMemberPartiesSorted(final Map<String, List<String>> membersMentions, final List<ParliamentMember> parsedMembers) {
         printMapSortedByValue(getPartiesMembersTotalMentions(membersMentions, parsedMembers));
@@ -114,6 +115,7 @@ public class ThirdAssignment {
 
     /**
      * Gets a ParliamentMember's corresponding party name as a String.
+     *
      * @param memberName The name of the member for which the party lookup is requested.
      * @param memberList List of ParliamentMembers and their respective parties.
      * @return The name of the party which the specified member is a member of, as a String.

@@ -5,45 +5,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class SecondAssignment {
-    public static void main(String[] args) throws IOException {
-        Map<String, List<String>> membersMentions = new HashMap<>();
-        final Pattern pageMatcherPattern = Pattern.compile(Config.anchorPattern, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-
-        /*
-        List<ParliamentMember> parsedMembers = parseParliamentMembersFile();
-        parsedMembers.forEach(member -> membersMentions.put(member.fullNameLower, new ArrayList<>()));
-
-        queueWebSearch(Config.hostUrlScheme, Config.hostUrl, Config.pageAmountToTraverse, membersMentions, pageMatcherPattern);
-
-        if (membersMentions.isEmpty()) {
-            System.err.println("No mentions of the parsed parliament members were found!");
-            System.exit(0);
-        }
-
-        ThirdAssignment.printMemberPartiesSorted(membersMentions, parsedMembers);
-        ThirdAssignment.printMemberCommitteesSorted(membersMentions, parsedMembers);
-        ThirdAssignment.printMostMentionedMembers(membersMentions);
-
-        printUserQueryResults(membersMentions);
-*/
-        Random random = new Random();
-        FourthAssignment.LinkedList linkedList = new FourthAssignment().new LinkedList();
-        for (int i = 0; i < 31; i++) {
-            linkedList.add(random.nextInt(100));
-        }
-
-        linkedList.forEach(item -> System.out.print(item + " "));
-        System.out.println();
-        linkedList.mergeSort();
-        linkedList.forEach(item -> System.out.print(item + " "));
-    }
-
     /**
      * Instantiates a new ParliamentMember object and adds it to the provided list.
      *
@@ -81,7 +51,7 @@ public class SecondAssignment {
      * @param membersMentions Map containing names of all parliament members and the URLs
      *                        where they have been mentioned.
      */
-    private static void printUserQueryResults(final Map<String, List<String>> membersMentions) {
+    public static void printUserQueryResults(final Map<String, List<String>> membersMentions) {
         if (Config.debug) {
             printAllFoundMentions(membersMentions);
         } else {
@@ -105,7 +75,7 @@ public class SecondAssignment {
      * @return the list of ParliamentMember objects.
      * @throws IOException
      */
-    private static List<ParliamentMember> parseParliamentMembersFile() throws IOException {
+    public static List<ParliamentMember> parseParliamentMembersFile() throws IOException {
         System.out.printf("Indexing mentions of parliament representatives at %s%nPlease standby..%n", Config.hostUrl);
         return getParliamentMembers(Config.splitCharacter, Config.pathname);
     }
@@ -147,9 +117,8 @@ public class SecondAssignment {
     }
 
 
-
-    private static void queueWebSearch(final String hostUrlScheme, final String hostUrl, int traversingLimit,
-                                       final Map<String, List<String>> parliamentMembersMentions, final Pattern pageMatcherPattern) throws IOException {
+    public static void queueWebSearch(final String hostUrlScheme, final String hostUrl, int traversingLimit,
+                                      final Map<String, List<String>> parliamentMembersMentions, final Pattern pageMatcherPattern) throws IOException {
         final Queue<String> foundURLs = new Queue<>();
         int pagesTraversed = 0;
         final List<String> visitedUrls = new ArrayList<>();

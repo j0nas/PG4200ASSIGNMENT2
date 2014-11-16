@@ -7,7 +7,6 @@ import java.util.stream.Stream;
 public class FirstAssignment {
 
     public static void main(String[] args) throws Exception {
-        getUserParameters();
     }
 
     public static File[] recursiveSearch(File folder, String needle) throws Exception {
@@ -39,13 +38,11 @@ public class FirstAssignment {
         try (Stream<String> lines = Files.lines(file.toPath())) {
             return lines.anyMatch(line -> line.toLowerCase().contains(lowerCase));
         } catch (Exception e) {
-            // TODO add option for /q or /debug performance
-            //System.out.printf("Could not read file: '%s' - error: %s %n", file.getAbsolutePath(), e.getLocalizedMessage());
             return false;
         }
     }
 
-    private static void getUserParameters() throws Exception {
+    public static void getUserParameters() throws Exception {
         Scanner scanner = new Scanner(System.in);
 
         System.out.print("String to search for (casing will be ignored): ");
