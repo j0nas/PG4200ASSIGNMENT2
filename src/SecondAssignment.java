@@ -15,6 +15,7 @@ public class SecondAssignment {
         Map<String, List<String>> membersMentions = new HashMap<>();
         final Pattern pageMatcherPattern = Pattern.compile(Config.anchorPattern, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
+        /*
         List<ParliamentMember> parsedMembers = parseParliamentMembersFile();
         parsedMembers.forEach(member -> membersMentions.put(member.fullNameLower, new ArrayList<>()));
 
@@ -30,6 +31,17 @@ public class SecondAssignment {
         ThirdAssignment.printMostMentionedMembers(membersMentions);
 
         printUserQueryResults(membersMentions);
+*/
+        Random random = new Random();
+        FourthAssignment.LinkedList linkedList = new FourthAssignment().new LinkedList();
+        for (int i = 0; i < 31; i++) {
+            linkedList.add(random.nextInt(100));
+        }
+
+        linkedList.forEach(item -> System.out.print(item + " "));
+        System.out.println();
+        linkedList.mergeSort();
+        linkedList.forEach(item -> System.out.print(item + " "));
     }
 
     /**
