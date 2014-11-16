@@ -20,14 +20,14 @@ public class SecondAssignment {
 
         queueWebSearch(Config.hostUrlScheme, Config.hostUrl, Config.pageAmountToTraverse, membersMentions, pageMatcherPattern);
 
-        ThirdAssignment.printMembersPartiesSorted(membersMentions, parsedMembers);
-        ThirdAssignment.printCommitteeMemberMentions(membersMentions, parsedMembers);
-        System.exit(0);
-
         if (membersMentions.isEmpty()) {
             System.err.println("No mentions of the parsed parliament members were found!");
             System.exit(0);
         }
+
+        ThirdAssignment.printMemberPartiesSorted(membersMentions, parsedMembers);
+        ThirdAssignment.printMemberCommitteesSorted(membersMentions, parsedMembers);
+        ThirdAssignment.printMostMentionedMembers(membersMentions);
 
         printUserQueryResults(membersMentions);
     }
@@ -40,7 +40,7 @@ public class SecondAssignment {
      *               [1] = sector
      *               [2] = forename
      *               [3] = surname
-     * @param list   the list to which the new PariliamentMember instance is added.
+     * @param list   the list to which the new ParliamentMember instance is added.
      */
     public static void addToList(String[] values, List<ParliamentMember> list) {
         list.add(new ParliamentMember(values[0], values[1], values[2], values[3]));
@@ -107,18 +107,6 @@ public class SecondAssignment {
      */
     public static String getMemberParty(final String memberName, List<ParliamentMember> members) {
         return members.parallelStream().filter(member -> member.fullNameLower.equals(memberName)).findAny().get().party;
-    }
-
-    /**
-     * Returns a Set of parties, containing distinct values.
-     *
-     * @param members A list of ParliamentMembers.
-     * @return A set of distinct parties which the provided ParliamentMembers belong to.
-     */
-    public static Set<String> getDistinctParties(List<ParliamentMember> members) {
-        final Set<String> parties = new HashSet<>();
-        members.forEach(member -> parties.add(member.party));
-        return parties;
     }
 
     /**
