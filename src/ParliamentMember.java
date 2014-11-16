@@ -1,15 +1,15 @@
 public class ParliamentMember {
     String party;
-    String sector;
+    String committee;
     String forename;
     String surname;
     String fullName;
     String fullNameLower;
 
-    public ParliamentMember(final String party, final String sector, final String forename, final String surname) {
+    public ParliamentMember(final String party, final String committee, final String forename, final String surname) {
         this.surname = surname;
         this.forename = forename;
-        this.sector = sector;
+        this.committee = committee;
         this.party = party;
 
         this.fullName = forename + " " + surname;
@@ -21,7 +21,7 @@ public class ParliamentMember {
     public String toString() {
         return "ParliamentMember{" +
                 "party='" + party + '\'' +
-                ", sector='" + sector + '\'' +
+                ", committee='" + committee + '\'' +
                 ", forename='" + forename + '\'' +
                 ", surname='" + surname + '\'' +
                 '}';

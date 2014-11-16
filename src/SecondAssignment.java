@@ -11,94 +11,148 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class SecondAssignment {
+    public static void main(String[] args) throws IOException {
+        Map<String, List<String>> membersMentions = new HashMap<>();
+        final Pattern pageMatcherPattern = Pattern.compile(Config.anchorPattern, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+        List<ParliamentMember> parsedMembers = parseParliamentMembersFile();
+        parsedMembers.forEach(member -> membersMentions.put(member.fullNameLower, new ArrayList<>()));
+
+        queueWebSearch(Config.hostUrlScheme, Config.hostUrl, Config.pageAmountToTraverse, membersMentions, pageMatcherPattern);
+
+        ThirdAssignment.printMembersPartiesSorted(membersMentions, parsedMembers);
+        ThirdAssignment.printCommitteeMemberMentions(membersMentions, parsedMembers);
+        System.exit(0);
+
+        if (membersMentions.isEmpty()) {
+            System.err.println("No mentions of the parsed parliament members were found!");
+            System.exit(0);
+        }
+
+        printUserQueryResults(membersMentions);
+    }
+
+    /**
+     * Instantiates a new ParliamentMember object and adds it to the provided list.
+     *
+     * @param values list of values, as retrieved from the provided text file.
+     *               [0] = party
+     *               [1] = sector
+     *               [2] = forename
+     *               [3] = surname
+     * @param list   the list to which the new PariliamentMember instance is added.
+     */
     public static void addToList(String[] values, List<ParliamentMember> list) {
         list.add(new ParliamentMember(values[0], values[1], values[2], values[3]));
     }
 
-    public static void stashAllFoundMembers(String html, String url, HashMap<String, ArrayList<String>> parliamentMembersMentions) {
-        final String finalHtml = html.toLowerCase();
-        parliamentMembersMentions.entrySet().parallelStream()
-                .filter(memberMap -> finalHtml.contains(memberMap.getKey()))
+    /**
+     * Lowercases and checks whether the provided html string contains any of the keys in the provided Map.
+     * Adds the url to the corresponding map's ArrayList if html contained mention of key.
+     *
+     * @param html           the string to search in.
+     * @param url            the URL to add to the ArrayList of the provided Map, if html contains key.
+     * @param memberMentions A map containing all parsed parliament members and their respective
+     *                       ArrayLists holding URLs to pages in which they have been mentioned.
+     */
+    public static void stashAllFoundMembers(String html, String url, Map<String, List<String>> memberMentions) {
+        final String lowerCaseHtml = html.toLowerCase();
+        memberMentions.entrySet().parallelStream()
+                .filter(memberMap -> lowerCaseHtml.contains(memberMap.getKey()))
                 .forEach(memberMap -> memberMap.getValue().add(url));
     }
 
-    public static void main(String[] args) throws IOException {
-        final String splitCharacter = " ";
-        final String pathname = "resources/stortinget2014.txt";
-        final String hostUrl = "klassekampen.no"; // HTTP(S) PREFIX IS APPENDED. NO SLASH AT END OF URL!
-        final String hostUrlScheme = "http://"; // EDIT THIS TO MATCH URL SCHEME. (HTTP/HTTPS)
-
-        final int pageAmountToTraverse = 100;
-        final boolean debug = false;
-
-        // Gets the link that the href parameter has as a value.
-        final Pattern pageMatcherPattern =
-                Pattern.compile("<a[^>]+href=[\"']?([^\"'>]+)[\"']?[^>]*>.+?</a>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-
-        System.out.printf("Indexing mentions of parliament representatives at %s%nPlease standby..%n", hostUrl);
-        ArrayList<ParliamentMember> parsedMembers = getParliamentMembers(splitCharacter, pathname);
-        HashMap<String, ArrayList<String>> membersMentions = new HashMap<>();
-        parsedMembers.forEach(parliamentMember -> membersMentions.put(parliamentMember.fullNameLower, new ArrayList<>()));
-
-        queueWebSearch(hostUrlScheme, hostUrl, pageAmountToTraverse, membersMentions, pageMatcherPattern);
-
-
-        final HashMap<String, Integer> partyVotes = new HashMap<>();
-        final Set<String> parties = assignment3_getDistinctParties(parsedMembers);
-
-        membersMentions.entrySet().parallelStream()
-                .filter(k -> k.getValue().size() > 0) // Filter to only mentioned parliament members
-                .forEach(mentionedMembers -> parsedMembers.stream()
-                        .filter(member -> member.fullNameLower.equals(mentionedMembers.getKey())) // Filter to only correct member ..
-                        .forEach(memberObject -> partyVotes.put(memberObject.party, partyVotes.get(memberObject.party) == null ? 1 : partyVotes.get(memberObject.party) + 1))); // and get the party s/he belongs to
-
-        partyVotes.forEach((party, voteCount) -> System.out.printf("%s: %d%n", party, voteCount));
-
-        if (debug) {
+    /**
+     * Prints mentions of requested parliament member, or mentions of all members if program is
+     * configured to debug extensively.
+     *
+     * @param membersMentions Map containing names of all parliament members and the URLs
+     *                        where they have been mentioned.
+     */
+    private static void printUserQueryResults(final Map<String, List<String>> membersMentions) {
+        if (Config.debug) {
             printAllFoundMentions(membersMentions);
         } else {
             final Scanner scanner = new Scanner(System.in);
             do {
-                if (!membersMentions.isEmpty()) {
-                    System.out.print("Name of parliament member: ");
-                    final String requestedMember = scanner.nextLine().toLowerCase().trim();
-                    if (membersMentions.containsKey(requestedMember)) {
-                        printMentionsOfParliamentMember(requestedMember, membersMentions.get(requestedMember));
-                    } else {
-                        System.out.println("Requested parliament member was not found. Please check input.");
-                    }
+                System.out.print("\nName of parliament member: ");
+                final String requestedMember = scanner.nextLine().toLowerCase().trim();
+                if (membersMentions.containsKey(requestedMember)) {
+                    printMentionsOfMember(requestedMember, membersMentions.get(requestedMember));
                 } else {
-                    System.out.println("No mentions of the parsed parliament members were found!");
+                    System.out.println("Requested parliament member was not found. Please check input.");
                 }
-            } while (!queryUserWishesToExit(scanner));
+            } while (!Util.UserInteraction.userWishesToExit(scanner));
         }
     }
 
-    private static Set<String> assignment3_getDistinctParties(List<ParliamentMember> members) {
-        // ASSIGNMENT 3
-        final Set<String> parties = new TreeSet<>();
+    /**
+     * Returns a list of ParliamentMember objects parsed from the provided
+     * parliament members file, specified in the config.
+     *
+     * @return the list of ParliamentMember objects.
+     * @throws IOException
+     */
+    private static List<ParliamentMember> parseParliamentMembersFile() throws IOException {
+        System.out.printf("Indexing mentions of parliament representatives at %s%nPlease standby..%n", Config.hostUrl);
+        return getParliamentMembers(Config.splitCharacter, Config.pathname);
+    }
+
+    /**
+     * Fetches the party which a ParliamentMember belongs to by looking the relation up in a list of ParliamentMembers.
+     *
+     * @param memberName The member for which the corresponding party is needed.
+     * @param members    A list of ParliamentMembers.
+     * @return The name of the party which the provided member belongs to, as a String.
+     */
+    public static String getMemberParty(final String memberName, List<ParliamentMember> members) {
+        return members.parallelStream().filter(member -> member.fullNameLower.equals(memberName)).findAny().get().party;
+    }
+
+    /**
+     * Returns a Set of parties, containing distinct values.
+     *
+     * @param members A list of ParliamentMembers.
+     * @return A set of distinct parties which the provided ParliamentMembers belong to.
+     */
+    public static Set<String> getDistinctParties(List<ParliamentMember> members) {
+        final Set<String> parties = new HashSet<>();
         members.forEach(member -> parties.add(member.party));
         return parties;
     }
 
-    private static void printMentionsOfParliamentMember(final String memberName, ArrayList<String> memberMentions) {
+    /**
+     * Outputs the member's name and the corresponding URLs where s/he has been mentioned.
+     *
+     * @param memberName     The name of the member to output.
+     * @param memberMentions The list of mentions corresponding to the member.
+     */
+    private static void printMentionsOfMember(final String memberName, List<String> memberMentions) {
         System.out.printf("Entries about %s:%n%n", memberName);
         memberMentions.forEach(System.out::println);
+        System.out.println();
     }
 
-    private static void printAllFoundMentions(final HashMap<String, ArrayList<String>> parliamentMembersMentions) {
-        parliamentMembersMentions.forEach((memberName, memberMentions) -> {
-            if (memberMentions.size() > 0) {
-                printMentionsOfParliamentMember(memberName, memberMentions);
-            }
-        });
+
+    /**
+     * Prints all mentions of all members.
+     *
+     * @param memberMentions A map containing all parsed parliament members and their respective
+     *                       ArrayLists holding URLs to pages in which they have been mentioned.
+     */
+    private static void printAllFoundMentions(final Map<String, List<String>> memberMentions) {
+        memberMentions.entrySet().stream()
+                .filter(map -> map.getValue().size() > 0)
+                .forEach(map -> printMentionsOfMember(map.getKey(), map.getValue()));
     }
+
+
 
     private static void queueWebSearch(final String hostUrlScheme, final String hostUrl, int traversingLimit,
-                                       final HashMap<String, ArrayList<String>> parliamentMembersMentions, final Pattern pageMatcherPattern) throws IOException {
+                                       final Map<String, List<String>> parliamentMembersMentions, final Pattern pageMatcherPattern) throws IOException {
         final Queue<String> foundURLs = new Queue<>();
         int pagesTraversed = 0;
-        final ArrayList<String> visitedUrls = new ArrayList<>();
+        final List<String> visitedUrls = new ArrayList<>();
 
         foundURLs.enqueue(hostUrlScheme + hostUrl);
         Matcher pageMatcher;
@@ -143,22 +197,12 @@ public class SecondAssignment {
         return parsedUrl + url;
     }
 
-    private static boolean queryUserWishesToExit(final Scanner scanner) {
-        System.out.print("Do you wish to terminate the program? (y/n) ");
-        String userResponse;
-        while (!(userResponse = scanner.nextLine()).equalsIgnoreCase("y") && !(userResponse.equalsIgnoreCase("n"))) {
-            System.out.println("Please enter either 'y' or 'n'.");
-        }
-
-        return userResponse.equalsIgnoreCase("y");
-    }
-
-    private static ArrayList<ParliamentMember> getParliamentMembers(final String splitCharacter, final String pathname) throws IOException {
+    private static List<ParliamentMember> getParliamentMembers(final String splitCharacter, final String pathname) throws IOException {
         if (Files.notExists(new File(pathname).toPath())) {
-            throw new FileNotFoundException("The provided file is not available!");
+            throw new FileNotFoundException("getParliamentMembers: The provided file is not available!");
         }
 
-        ArrayList<ParliamentMember> parliamentMembers = new ArrayList<>();
+        List<ParliamentMember> parliamentMembers = new ArrayList<>();
         try (Stream<String> lines = Files.lines(new File(pathname).toPath())) {
             lines.forEach(line -> addToList(line.split(splitCharacter, 4), parliamentMembers));
         }
